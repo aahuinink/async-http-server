@@ -3,7 +3,7 @@
 
 use esp_backtrace as _;
 use esp_hal::{
-    clock::ClockControl, delay::Delay, peripherals::Peripherals, prelude::*, system::SystemControl,
+    clock::ClockControl, delay::Delay, gpio::{Io, Level, Output}, peripherals::Peripherals, prelude::*, system::SystemControl
 };
 
 extern crate alloc;
@@ -42,8 +42,14 @@ fn main() -> ! {
     )
     .unwrap();
 
+    // blinky
+
+    let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
+
+    let mut led = Output::new(io.pins.gpio0, Level::High);
+
     loop {
-        log::info!("Hello world!");
+        led.toggle();
         delay.delay(500.millis());
     }
 }
