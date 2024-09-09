@@ -4,7 +4,7 @@
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
-use esp_hal::{prelude::*, system::SystemControl, timer::timg::TimerGroup, clock::ClockControl, peripherals::Peripherals};
+use esp_hal::{system::SystemControl, timer::timg::TimerGroup, clock::ClockControl, peripherals::Peripherals};
 
 #[embassy_executor::task]
 async fn run() {
