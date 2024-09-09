@@ -1,55 +1,37 @@
 #![no_std]
 #![no_main]
 
+use embassy_executor::Spawner;
+use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
-use esp_hal::{
-    clock::ClockControl, delay::Delay, gpio::{Io, Level, Output}, peripherals::Peripherals, prelude::*, system::SystemControl
-};
+use esp_hal::{prelude::*, system::SystemControl, timer::timg::TimerGroup, clock::ClockControl, peripherals::Peripherals};
 
-extern crate alloc;
-use core::mem::MaybeUninit;
-
-#[global_allocator]
-static ALLOCATOR: esp_alloc::EspHeap = esp_alloc::EspHeap::empty();
-
-fn init_heap() {
-    const HEAP_SIZE: usize = 32 * 1024;
-    static mut HEAP: MaybeUninit<[u8; HEAP_SIZE]> = MaybeUninit::uninit();
-
-    unsafe {
-        ALLOCATOR.init(HEAP.as_mut_ptr() as *mut u8, HEAP_SIZE);
+#[embassy_executor::task]
+async fn run() {
+    loop {
+        esp_println::println!("Hello world from embassy using esp-hal-async!");
+        Timer::after(Duration::from_millis(1_000)).await;
     }
 }
 
-#[entry]
-fn main() -> ! {
-    let peripherals = Peripherals::take();
-    let system = SystemControl::new(peripherals.SYSTEM);
-
-    let clocks = ClockControl::max(system.clock_control).freeze();
-    let delay = Delay::new(&clocks);
-    init_heap();
-
+#[esp_hal_embassy::main]
+async fn main(spawner: Spawner) {
+    // initialize logger
     esp_println::logger::init_logger_from_env();
 
-    let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0, &clocks);
-    let _init = esp_wifi::initialize(
-        esp_wifi::EspWifiInitFor::Wifi,
-        timg0.timer0,
-        esp_hal::rng::Rng::new(peripherals.RNG),
-        peripherals.RADIO_CLK,
-        &clocks,
-    )
-    .unwrap();
+    // take peripherals, init system and clock objects
+    let peripherals = Peripherals::take();
+    let system = SystemControl::new(peripherals.SYSTEM);
+    let clocks = ClockControl::boot_defaults(system.clock_control).freeze();
 
-    // blinky
+    esp_println::println!("Init!");
+    let timg0 = TimerGroup::new(peripherals.TIMG0, &clocks);
+    esp_hal_embassy::init(&clocks, timg0.timer0);
 
-    let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
-
-    let mut led = Output::new(io.pins.gpio0, Level::High);
+    spawner.spawn(run()).ok();
 
     loop {
-        led.toggle();
-        delay.delay(500.millis());
+        esp_println::println!("Bing!");
+        Timer::after(Duration::from_millis(5_000)).await;
     }
 }
